@@ -98,7 +98,7 @@ export default function Products() {
         </Button>
       </div>
 
-      <div className="rounded-md border bg-white">
+      <div className="hidden md:block rounded-md border bg-white">
         <Table>
           <TableHeader>
             <TableRow>
@@ -128,6 +128,38 @@ export default function Products() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile View */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {products.map((product) => (
+          <div key={product._id} className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="font-medium text-lg">{product.name}</div>
+                <div className="text-sm text-slate-500">Kho: <span className="font-medium text-slate-900">{product.stock}</span></div>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => setDeleteId(product._id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+              <div>
+                <span className="text-xs text-slate-500 uppercase block">Giá bán</span>
+                <span className="font-medium text-slate-900">{formatCurrency(product.price)}</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 uppercase block">Giá vốn</span>
+                <span className="font-medium text-slate-900">{formatCurrency(product.costPrice)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Dialog

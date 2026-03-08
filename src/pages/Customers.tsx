@@ -93,7 +93,7 @@ export default function Customers() {
         </Button>
       </div>
 
-      <div className="rounded-md border bg-white">
+      <div className="hidden md:block rounded-md border bg-white">
         <Table>
           <TableHeader>
             <TableRow>
@@ -125,6 +125,38 @@ export default function Customers() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile View */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {customers.map((customer) => (
+          <div key={customer._id} className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="font-medium text-lg">{customer.name}</div>
+                <div className="text-sm text-slate-500">{customer.phone}</div>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(customer)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => setDeleteId(customer._id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t">
+              <div>
+                <span className="text-xs text-slate-500 uppercase block">Điểm tích lũy</span>
+                <span className="font-medium text-slate-900">{customer.points}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-500 uppercase block">Giá trị quy đổi</span>
+                <span className="font-medium text-green-600">{formatCurrency(customer.points * 10)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Dialog
