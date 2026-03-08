@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .animate-in {
+    animation-duration: 150ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+  .fade-in {
+    animation-name: fadeIn;
+  }
+  .zoom-in-95 {
+    --tw-enter-scale: 0.95;
+    animation-name: zoomIn;
+  }
+  .slide-in-from-right {
+    animation-name: slideInFromRight;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(var(--tw-enter-scale)); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
