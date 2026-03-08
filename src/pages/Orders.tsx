@@ -4,6 +4,7 @@ import { Badge } from '../components/ui/badge';
 import { format } from 'date-fns';
 import { Dialog } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
+import { Trash2 } from 'lucide-react';
 
 interface Order {
   _id: string;
@@ -19,6 +20,7 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -53,6 +55,24 @@ export default function Orders() {
     } catch (error) {
       console.error(error);
       alert('Lỗi cập nhật trạng thái');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (deleteId) {
+      try {
+        const res = await fetch(`/api/orders/${deleteId}`, { method: 'DELETE' });
+        if (!res.ok) {
+           const err = await res.json();
+           alert(err.message);
+           return;
+        }
+        setDeleteId(null);
+        fetchOrders();
+      } catch (error) {
+        console.error(error);
+        alert('Lỗi xóa đơn hàng');
+      }
     }
   };
 
@@ -91,6 +111,7 @@ export default function Orders() {
               <TableHead className="min-w-[200px]">Sản phẩm</TableHead>
               <TableHead className="min-w-[100px]">Tổng tiền</TableHead>
               <TableHead className="min-w-[120px]">Trạng thái</TableHead>
+              <TableHead className="min-w-[80px] text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -118,6 +139,19 @@ export default function Orders() {
                   <Badge variant={getStatusColor(order.status)}>
                     {getStatusLabel(order.status)}
                   </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteId(order._id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -159,6 +193,30 @@ export default function Orders() {
           </div>
           <div className="flex justify-end pt-2">
             <Button variant="ghost" onClick={() => setIsStatusDialogOpen(false)}>Đóng</Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="Xác nhận xóa đơn hàng"
+      >
+        <div className="space-y-4">
+          <p className="text-red-600 font-medium">
+            Cảnh báo: Hành động này không thể hoàn tác!
+          </p>
+          <p className="text-sm text-slate-600">
+            Nếu bạn xóa đơn hàng này:
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Đơn hàng sẽ biến mất khỏi lịch sử.</li>
+              <li>Nếu đơn hàng đang hoạt động (Pending/Completed), tồn kho sản phẩm sẽ được hoàn lại.</li>
+              <li>Điểm tích lũy của khách hàng sẽ được tính toán lại (hoàn điểm đã dùng, trừ điểm đã tích).</li>
+            </ul>
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Xóa vĩnh viễn</Button>
           </div>
         </div>
       </Dialog>

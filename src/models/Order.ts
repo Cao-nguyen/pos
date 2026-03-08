@@ -30,6 +30,9 @@ const OrderSchema: Schema = new Schema({
   totalAmount: { type: Number, required: true },
   pointsUsed: { type: Number, default: 0 },
   discountAmount: { type: Number, default: 0 },
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  collection: 'orders' // Explicitly set collection name
+});
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);

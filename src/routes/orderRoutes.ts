@@ -112,11 +112,13 @@ router.put('/:id/status', async (req, res) => {
     // If cancelling an order that was pending or completed -> Restore stock
     if (status === 'cancelled' && oldStatus !== 'cancelled') {
       for (const item of order.products) {
-        await Product.findByIdAndUpdate(
-          item.product._id,
-          { $inc: { stock: item.quantity } },
-          { session }
-        );
+        if (item.product) {
+          await Product.findByIdAndUpdate(
+            item.product._id,
+            { $inc: { stock: item.quantity } },
+            { session }
+          );
+        }
       }
       
       // Revert points if customer exists
@@ -142,15 +144,17 @@ router.put('/:id/status', async (req, res) => {
     // If completing a cancelled order -> Deduct stock again
     if (status === 'completed' && oldStatus === 'cancelled') {
        for (const item of order.products) {
-        const product = await Product.findById(item.product._id).session(session);
-        if (product && product.stock < item.quantity) {
-           throw new Error(`Not enough stock for ${product.name}`);
+        if (item.product) {
+          const product = await Product.findById(item.product._id).session(session);
+          if (product && product.stock < item.quantity) {
+             throw new Error(`Not enough stock for ${product.name}`);
+          }
+          await Product.findByIdAndUpdate(
+            item.product._id,
+            { $inc: { stock: -item.quantity } },
+            { session }
+          );
         }
-        await Product.findByIdAndUpdate(
-          item.product._id,
-          { $inc: { stock: -item.quantity } },
-          { session }
-        );
       }
       
       // Apply points again
@@ -187,6 +191,63 @@ router.put('/:id/status', async (req, res) => {
     await session.abortTransaction();
     console.error(error);
     res.status(400).json({ message: error.message || 'Error updating order' });
+  } finally {
+    session.endSession();
+  }
+});
+
+// Delete order
+router.delete('/:id', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const order = await Order.findById(req.params.id).populate('products.product');
+    
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // If order is active (not cancelled), we need to revert its effects
+    if (order.status !== 'cancelled') {
+      // Restore stock
+      for (const item of order.products) {
+        if (item.product) {
+          await Product.findByIdAndUpdate(
+            item.product._id,
+            { $inc: { stock: item.quantity } },
+            { session }
+          );
+        }
+      }
+      
+      // Revert points
+      if (order.customer) {
+        // Refund used points
+        if (order.pointsUsed > 0) {
+          await Customer.findByIdAndUpdate(
+            order.customer,
+            { $inc: { points: order.pointsUsed } },
+            { session }
+          );
+        }
+        // Remove earned points
+        const pointsEarned = Math.floor(order.totalAmount / 1000);
+        await Customer.findByIdAndUpdate(
+          order.customer,
+          { $inc: { points: -pointsEarned } },
+          { session }
+        );
+      }
+    }
+
+    await Order.findByIdAndDelete(req.params.id, { session });
+
+    await session.commitTransaction();
+    res.json({ message: 'Order deleted' });
+  } catch (error: any) {
+    await session.abortTransaction();
+    console.error(error);
+    res.status(500).json({ message: error.message || 'Error deleting order' });
   } finally {
     session.endSession();
   }

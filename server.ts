@@ -34,8 +34,13 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Production static file serving (if needed, but usually handled by build)
+    // Production static file serving
     app.use(express.static('dist'));
+    
+    // SPA fallback for production
+    app.get('*', (req, res) => {
+      res.sendFile('index.html', { root: 'dist' });
+    });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
