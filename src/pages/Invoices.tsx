@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Search, Printer, Download, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 interface Order {
   _id: string;
@@ -105,7 +105,7 @@ export default function Invoices() {
     if (!invoiceRef.current) return;
     
     try {
-      const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
+      const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
       
       // A5 dimensions in mm: 148 x 210
@@ -122,8 +122,12 @@ export default function Invoices() {
       pdf.save(`HoaDon_${selectedCustomerData?.name}_${format(new Date(), 'ddMMyy')}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Lỗi tạo PDF');
+      alert('Lỗi tạo PDF. Vui lòng thử lại.');
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -246,7 +250,10 @@ export default function Invoices() {
                 className="max-w-md"
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
+              <Button onClick={handlePrint} variant="outline" className="gap-2">
+                <Printer className="h-4 w-4" /> In hóa đơn
+              </Button>
               <Button onClick={downloadPDF} className="gap-2">
                 <Download className="h-4 w-4" /> Tải PDF (A5)
               </Button>
@@ -256,6 +263,7 @@ export default function Invoices() {
           {/* Invoice Preview (A5 proportions roughly) */}
           <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-[60vh] flex justify-center">
             <div 
+              id="print-section"
               ref={invoiceRef} 
               className="bg-white p-8 shadow-sm relative"
               style={{ width: '148mm', minHeight: '210mm', color: '#000' }}

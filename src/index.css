@@ -11,6 +11,24 @@
   }
 }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-section, #print-section * {
+    visibility: visible;
+  }
+  #print-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 148mm;
+    margin: 0;
+    padding: 20px;
+    box-shadow: none;
+  }
+}
+
 @layer utilities {
   .animate-in {
     animation-duration: 150ms;
