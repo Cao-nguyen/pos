@@ -60,6 +60,15 @@ export default function POS() {
     }).filter(item => item.quantity > 0));
   };
 
+  const setItemQuantity = (id: string, quantity: number) => {
+    setCart(prev => prev.map(item => {
+      if (item._id === id) {
+        return { ...item, quantity: Math.max(0, quantity) };
+      }
+      return item;
+    }).filter(item => item.quantity > 0));
+  };
+
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discount = (usePoints && selectedCustomer) ? Math.min(subtotal, selectedCustomer.points * 10) : 0;
   const total = subtotal - discount;
@@ -125,12 +134,32 @@ export default function POS() {
                 <div className="font-medium text-sm">{item.name}</div>
                 <div className="text-xs text-slate-500">{formatCurrency(item.price)}</div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateQuantity(item._id, -1)}>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateQuantity(item._id, -1)}>
                   <Minus className="h-3 w-3" />
                 </Button>
-                <span className="text-sm w-4 text-center">{item.quantity}</span>
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateQuantity(item._id, 1)}>
+                <input 
+                  type="number" 
+                  className="w-12 h-7 text-center text-sm border rounded-md hide-arrows"
+                  value={item.quantity === 0 ? '' : item.quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (!isNaN(val)) {
+                      setItemQuantity(item._id, val);
+                    } else if (e.target.value === '') {
+                      // Allow empty string temporarily while typing, but we need to handle it.
+                      // We can set it to 0, which will remove it, so let's just keep it as 0
+                      setItemQuantity(item._id, 0);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '' || parseInt(e.target.value) <= 0) {
+                      setItemQuantity(item._id, 0); // This will remove the item
+                    }
+                  }}
+                  min="0"
+                />
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateQuantity(item._id, 1)}>
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>

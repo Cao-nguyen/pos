@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 @layer utilities {
+  .hide-arrows::-webkit-outer-spin-button,
+  .hide-arrows::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .hide-arrows {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
   .animate-in {
     animation-duration: 150ms;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
