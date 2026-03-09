@@ -28,6 +28,7 @@ export default function Invoices() {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceNote, setInvoiceNote] = useState<string>('');
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,22 +86,15 @@ export default function Invoices() {
   // Calculate combined invoice data
   const ordersToInvoice = orders.filter(o => selectedOrders.includes(o._id));
   
-  // Combine products
-  const combinedProducts = ordersToInvoice.reduce((acc, order) => {
-    order.products.forEach(p => {
-      const existing = acc.find(item => item.name === p.product?.name && item.price === p.price);
-      if (existing) {
-        existing.quantity += p.quantity;
-      } else {
-        acc.push({
-          name: p.product?.name || 'Sản phẩm đã xóa',
-          price: p.price,
-          quantity: p.quantity
-        });
-      }
-    });
-    return acc;
-  }, [] as { name: string, price: number, quantity: number }[]);
+  // Flatten products without combining
+  const invoiceProducts = ordersToInvoice.flatMap(order => 
+    order.products.map(p => ({
+      orderCode: order.code,
+      name: p.product?.name || 'Sản phẩm đã xóa',
+      price: p.price,
+      quantity: p.quantity
+    }))
+  );
 
   const totalPointsUsed = ordersToInvoice.reduce((sum, o) => sum + o.pointsUsed, 0);
   const totalDiscount = ordersToInvoice.reduce((sum, o) => sum + o.discountAmount, 0);
@@ -242,71 +236,121 @@ export default function Invoices() {
         title="Hóa Đơn Bán Hàng"
       >
         <div className="space-y-4">
-          <div className="flex justify-end gap-2 mb-4">
-            <Button onClick={downloadPDF} className="gap-2">
-              <Download className="h-4 w-4" /> Tải PDF (A5)
-            </Button>
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block">Ghi chú chung cho hóa đơn (Tùy chọn)</label>
+              <Input 
+                placeholder="Nhập ghi chú sẽ in trên hóa đơn..." 
+                value={invoiceNote}
+                onChange={(e) => setInvoiceNote(e.target.value)}
+                className="max-w-md"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={downloadPDF} className="gap-2">
+                <Download className="h-4 w-4" /> Tải PDF (A5)
+              </Button>
+            </div>
           </div>
 
           {/* Invoice Preview (A5 proportions roughly) */}
           <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-[60vh] flex justify-center">
             <div 
               ref={invoiceRef} 
-              className="bg-white p-8 shadow-sm"
+              className="bg-white p-8 shadow-sm relative"
               style={{ width: '148mm', minHeight: '210mm', color: '#000' }}
             >
-              <div className="text-center mb-8 border-b pb-4 border-dashed border-slate-300">
-                <h1 className="text-2xl font-bold uppercase tracking-wider">Lotus Shop</h1>
-                <p className="text-sm text-slate-600 mt-1">Hóa Đơn Bán Hàng</p>
-                <p className="text-xs text-slate-500 mt-1">Ngày: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <div className="absolute top-0 left-0 w-full h-2 bg-slate-900"></div>
+              
+              <div className="text-center mb-8 border-b pb-6 border-slate-200 mt-4">
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-slate-900">Lotus Shop</h1>
+                <p className="text-sm text-slate-500 mt-2 uppercase tracking-widest font-medium">Hóa Đơn Bán Hàng</p>
               </div>
 
-              <div className="mb-6 text-sm">
-                <div className="flex mb-1"><span className="w-24 font-semibold">Khách hàng:</span> <span>{selectedCustomerData?.name}</span></div>
-                <div className="flex mb-1"><span className="w-24 font-semibold">Điện thoại:</span> <span>{selectedCustomerData?.phone}</span></div>
-                <div className="flex mb-1"><span className="w-24 font-semibold">Mã đơn gộp:</span> <span className="text-xs">{ordersToInvoice.map(o => o.code).join(', ')}</span></div>
+              <div className="flex justify-between items-start mb-8 text-sm">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Khách hàng</p>
+                  <p className="font-bold text-base text-slate-900">{selectedCustomerData?.name}</p>
+                  <p className="text-slate-600 mt-1">{selectedCustomerData?.phone}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Thông tin đơn</p>
+                  <p className="text-slate-600 mt-1">Ngày: <span className="font-medium text-slate-900">{format(new Date(), 'dd/MM/yyyy HH:mm')}</span></p>
+                  <p className="text-slate-600 mt-1">Mã: <span className="font-medium text-slate-900">{ordersToInvoice.map(o => o.code).join(', ')}</span></p>
+                </div>
               </div>
 
-              <table className="w-full text-sm mb-6">
+              <table className="w-full text-sm mb-8">
                 <thead>
-                  <tr className="border-b border-slate-300">
-                    <th className="text-left py-2 font-semibold">Sản phẩm</th>
-                    <th className="text-center py-2 font-semibold w-12">SL</th>
-                    <th className="text-right py-2 font-semibold w-24">Đơn giá</th>
-                    <th className="text-right py-2 font-semibold w-24">Thành tiền</th>
+                  <tr className="border-b-2 border-slate-900 text-slate-900">
+                    <th className="text-left py-3 font-bold uppercase tracking-wider text-xs">Mã đơn</th>
+                    <th className="text-left py-3 font-bold uppercase tracking-wider text-xs">Sản phẩm</th>
+                    <th className="text-center py-3 font-bold uppercase tracking-wider text-xs w-12">SL</th>
+                    <th className="text-right py-3 font-bold uppercase tracking-wider text-xs w-24">Đơn giá</th>
+                    <th className="text-right py-3 font-bold uppercase tracking-wider text-xs w-28">Thành tiền</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {combinedProducts.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 border-dashed">
-                      <td className="py-2 pr-2">{item.name}</td>
-                      <td className="text-center py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{formatCurrency(item.price)}</td>
-                      <td className="text-right py-2">{formatCurrency(item.price * item.quantity)}</td>
+                  {invoiceProducts.map((item, idx) => (
+                    <tr key={idx} className="border-b border-slate-200">
+                      <td className="py-3 pr-2 text-slate-500 text-xs">{item.orderCode}</td>
+                      <td className="py-3 pr-2 font-medium text-slate-900">{item.name}</td>
+                      <td className="text-center py-3 text-slate-600">{item.quantity}</td>
+                      <td className="text-right py-3 text-slate-600">{formatCurrency(item.price)}</td>
+                      <td className="text-right py-3 font-bold text-slate-900">{formatCurrency(item.price * item.quantity)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="space-y-1 text-sm ml-auto w-48">
-                <div className="flex justify-between">
-                  <span>Tạm tính:</span>
-                  <span>{formatCurrency(subtotal)}</span>
+              <div className="flex flex-col gap-6 mb-8">
+                <div className="w-full flex justify-end">
+                  <div className="w-64 space-y-3 text-sm">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Tạm tính:</span>
+                      <span className="font-medium text-slate-900">{formatCurrency(subtotal)}</span>
+                    </div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Giảm giá (Điểm):</span>
+                        <span className="font-medium text-red-600">-{formatCurrency(totalDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-lg pt-3 border-t-2 border-slate-900 mt-3 text-slate-900">
+                      <span>Tổng cộng:</span>
+                      <span>{formatCurrency(finalTotal)}</span>
+                    </div>
+                  </div>
                 </div>
-                {totalDiscount > 0 && (
-                  <div className="flex justify-between text-slate-600">
-                    <span>Giảm giá (Điểm):</span>
-                    <span>-{formatCurrency(totalDiscount)}</span>
+
+                {ordersToInvoice.some(o => o.note && o.note.trim() !== '') && (
+                  <div className="w-full mt-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2 border-b border-slate-200 pb-2">Ghi chú đơn hàng</p>
+                    <div className="text-sm text-slate-700 space-y-2 pt-2">
+                      {ordersToInvoice.filter(o => o.note && o.note.trim() !== '').map(o => (
+                        <div key={o._id} className="flex gap-2">
+                          <span className="font-semibold text-slate-900 whitespace-nowrap">{o.code}:</span> 
+                          <span className="italic">{o.note}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-lg pt-2 border-t border-slate-300 mt-2">
-                  <span>Tổng cộng:</span>
-                  <span>{formatCurrency(finalTotal)}</span>
-                </div>
+
+                {invoiceNote.trim() !== '' && (
+                  <div className="w-full mt-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2 border-b border-slate-200 pb-2">Ghi chú hóa đơn</p>
+                    <div className="text-sm text-slate-700 pt-2 italic">
+                      {invoiceNote}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-12 text-center text-sm text-slate-500 italic">
-                Cảm ơn quý khách đã mua hàng!
+              <div className="mt-16 text-center">
+                <div className="w-16 h-1 bg-slate-200 mx-auto mb-6"></div>
+                <p className="text-sm font-bold text-slate-900 uppercase tracking-widest">Cảm ơn quý khách!</p>
+                <p className="text-xs text-slate-500 mt-2">Hẹn gặp lại quý khách lần sau</p>
               </div>
             </div>
           </div>
