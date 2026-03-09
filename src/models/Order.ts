@@ -12,6 +12,7 @@ export interface IOrder extends Document {
   totalAmount: number;
   pointsUsed: number;
   discountAmount: number;
+  note?: string;
 }
 
 const OrderSchema: Schema = new Schema({
@@ -30,6 +31,7 @@ const OrderSchema: Schema = new Schema({
   totalAmount: { type: Number, required: true },
   pointsUsed: { type: Number, default: 0 },
   discountAmount: { type: Number, default: 0 },
+  note: { type: String },
 }, { 
   timestamps: true,
   collection: 'orders' // Explicitly set collection name

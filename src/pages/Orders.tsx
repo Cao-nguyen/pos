@@ -14,6 +14,7 @@ interface Order {
   totalAmount: number;
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: string;
+  note?: string;
 }
 
 export default function Orders() {
@@ -133,6 +134,11 @@ export default function Orders() {
                       {p.product?.name || 'Sản phẩm đã xóa'} x{p.quantity}
                     </div>
                   ))}
+                  {order.note && (
+                    <div className="text-xs text-slate-500 mt-1 italic">
+                      Ghi chú: {order.note}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
                 <TableCell>
@@ -168,6 +174,12 @@ export default function Orders() {
           <p className="text-sm text-slate-500">
             Thay đổi trạng thái đơn hàng sẽ ảnh hưởng đến tồn kho và điểm tích lũy của khách hàng.
           </p>
+          {selectedOrder?.note && (
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-sm">
+              <span className="font-semibold text-yellow-800">Ghi chú: </span>
+              <span className="text-yellow-900">{selectedOrder.note}</span>
+            </div>
+          )}
           <div className="grid gap-2">
             <Button 
               variant={selectedOrder?.status === 'pending' ? 'default' : 'outline'}

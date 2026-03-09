@@ -33,6 +33,7 @@ export default function POS() {
   const [usePoints, setUsePoints] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false); // Mobile Cart Drawer
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     fetch('/api/products').then(res => res.json()).then(setProducts);
@@ -78,7 +79,8 @@ export default function POS() {
         pointsUsed: usePoints ? pointsUsed : 0,
         discountAmount: discount,
         totalAmount: total,
-        status // Add status to payload
+        status, // Add status to payload
+        note
       };
 
       const res = await fetch('/api/orders', {
@@ -93,6 +95,7 @@ export default function POS() {
       setCart([]);
       setSelectedCustomer(null);
       setUsePoints(false);
+      setNote('');
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
       // Refresh data
@@ -168,6 +171,16 @@ export default function POS() {
             />
           </div>
         )}
+
+        <div>
+          <label className="text-sm font-medium mb-1 block">Ghi chú đơn hàng</label>
+          <Input 
+            placeholder="Nhập ghi chú..." 
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            className="text-sm"
+          />
+        </div>
 
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">

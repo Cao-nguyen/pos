@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { customerId, products, pointsUsed, totalAmount, discountAmount, status } = req.body;
+    const { customerId, products, pointsUsed, totalAmount, discountAmount, status, note } = req.body;
 
     // 1. Validate Customer Points
     if (customerId && pointsUsed > 0) {
@@ -38,8 +38,17 @@ router.post('/', async (req, res) => {
     }
 
     // 2. Create Order
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const randomLetter1 = letters.charAt(Math.floor(Math.random() * letters.length));
+    const randomLetter2 = letters.charAt(Math.floor(Math.random() * letters.length));
+    const orderCode = `LTS${day}${month}${minute}${randomLetter1}${randomLetter2}`;
+
     const order = new Order({
-      code: `ORD-${Date.now()}`,
+      code: orderCode,
       customer: customerId,
       products: products.map((p: any) => ({
         product: p.productId,
@@ -49,7 +58,8 @@ router.post('/', async (req, res) => {
       totalAmount,
       pointsUsed,
       discountAmount,
-      status: status || 'completed'
+      status: status || 'completed',
+      note
     });
 
     await order.save({ session });
@@ -74,13 +84,16 @@ router.post('/', async (req, res) => {
         );
       }
       
-      // Add new points (1000 VND = 1 point)
-      const pointsEarned = Math.floor(totalAmount / 1000);
-      await Customer.findByIdAndUpdate(
-        customerId,
-        { $inc: { points: pointsEarned } },
-        { session }
-      );
+      // Add new points ONLY if status is completed
+      const finalStatus = status || 'completed';
+      if (finalStatus === 'completed') {
+        const pointsEarned = Math.floor(totalAmount / 1000);
+        await Customer.findByIdAndUpdate(
+          customerId,
+          { $inc: { points: pointsEarned } },
+          { session }
+        );
+      }
     }
 
     await session.commitTransaction();
@@ -107,82 +120,79 @@ router.put('/:id/status', async (req, res) => {
     }
 
     const oldStatus = order.status;
+    const newStatus = status;
 
-    // Logic for stock restoration/deduction
-    // If cancelling an order that was pending or completed -> Restore stock
-    if (status === 'cancelled' && oldStatus !== 'cancelled') {
-      for (const item of order.products) {
-        if (item.product) {
-          await Product.findByIdAndUpdate(
-            item.product._id,
-            { $inc: { stock: item.quantity } },
-            { session }
-          );
+    if (oldStatus !== newStatus) {
+      const pointsEarned = Math.floor(order.totalAmount / 1000);
+
+      // 1. Handle Stock and pointsUsed (Active vs Cancelled)
+      if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
+        // Deactivating order: Restore stock, refund pointsUsed
+        for (const item of order.products) {
+          if (item.product) {
+            await Product.findByIdAndUpdate(
+              item.product._id,
+              { $inc: { stock: item.quantity } },
+              { session }
+            );
+          }
         }
-      }
-      
-      // Revert points if customer exists
-      if (order.customer) {
-        // Refund used points
-        if (order.pointsUsed > 0) {
+        if (order.customer && order.pointsUsed > 0) {
           await Customer.findByIdAndUpdate(
             order.customer,
             { $inc: { points: order.pointsUsed } },
             { session }
           );
         }
-        // Remove earned points (approx logic: 1000 VND = 1 point)
-        const pointsEarned = Math.floor(order.totalAmount / 1000);
-        await Customer.findByIdAndUpdate(
-          order.customer,
-          { $inc: { points: -pointsEarned } },
-          { session }
-        );
-      }
-    }
-
-    // If completing a cancelled order -> Deduct stock again
-    if (status === 'completed' && oldStatus === 'cancelled') {
-       for (const item of order.products) {
-        if (item.product) {
-          const product = await Product.findById(item.product._id).session(session);
-          if (product && product.stock < item.quantity) {
-             throw new Error(`Not enough stock for ${product.name}`);
+      } else if (oldStatus === 'cancelled' && newStatus !== 'cancelled') {
+        // Reactivating order: Deduct stock, deduct pointsUsed
+        for (const item of order.products) {
+          if (item.product) {
+            const product = await Product.findById(item.product._id).session(session);
+            if (product && product.stock < item.quantity) {
+               throw new Error(`Not enough stock for ${product.name}`);
+            }
+            await Product.findByIdAndUpdate(
+              item.product._id,
+              { $inc: { stock: -item.quantity } },
+              { session }
+            );
           }
-          await Product.findByIdAndUpdate(
-            item.product._id,
-            { $inc: { stock: -item.quantity } },
-            { session }
-          );
         }
-      }
-      
-      // Apply points again
-      if (order.customer) {
-        if (order.pointsUsed > 0) {
-           // Check if customer has enough points to use? 
-           // Actually pointsUsed is what they USED in the order. 
-           // We need to deduct it again from their balance.
-           const customer = await Customer.findById(order.customer).session(session);
-           if (customer && customer.points < order.pointsUsed) {
-             throw new Error('Customer does not have enough points to restore this order');
-           }
-           await Customer.findByIdAndUpdate(
+        if (order.customer && order.pointsUsed > 0) {
+          const customer = await Customer.findById(order.customer).session(session);
+          if (customer && customer.points < order.pointsUsed) {
+            throw new Error('Customer does not have enough points to restore this order');
+          }
+          await Customer.findByIdAndUpdate(
             order.customer,
             { $inc: { points: -order.pointsUsed } },
             { session }
           );
         }
-        const pointsEarned = Math.floor(order.totalAmount / 1000);
-        await Customer.findByIdAndUpdate(
-          order.customer,
-          { $inc: { points: pointsEarned } },
-          { session }
-        );
+      }
+
+      // 2. Handle pointsEarned (Completed vs Not Completed)
+      if (order.customer) {
+        if (oldStatus !== 'completed' && newStatus === 'completed') {
+          // Becoming completed: Add pointsEarned
+          await Customer.findByIdAndUpdate(
+            order.customer,
+            { $inc: { points: pointsEarned } },
+            { session }
+          );
+        } else if (oldStatus === 'completed' && newStatus !== 'completed') {
+          // No longer completed: Remove pointsEarned
+          await Customer.findByIdAndUpdate(
+            order.customer,
+            { $inc: { points: -pointsEarned } },
+            { session }
+          );
+        }
       }
     }
 
-    order.status = status;
+    order.status = newStatus;
     await order.save({ session });
 
     await session.commitTransaction();
@@ -230,13 +240,15 @@ router.delete('/:id', async (req, res) => {
             { session }
           );
         }
-        // Remove earned points
-        const pointsEarned = Math.floor(order.totalAmount / 1000);
-        await Customer.findByIdAndUpdate(
-          order.customer,
-          { $inc: { points: -pointsEarned } },
-          { session }
-        );
+        // Remove earned points ONLY if it was completed
+        if (order.status === 'completed') {
+          const pointsEarned = Math.floor(order.totalAmount / 1000);
+          await Customer.findByIdAndUpdate(
+            order.customer,
+            { $inc: { points: -pointsEarned } },
+            { session }
+          );
+        }
       }
     }
 
