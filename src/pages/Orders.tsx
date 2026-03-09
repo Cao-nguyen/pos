@@ -4,7 +4,8 @@ import { Badge } from '../components/ui/badge';
 import { format } from 'date-fns';
 import { Dialog } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Trash2, Search, Filter } from 'lucide-react';
 
 interface Order {
   _id: string;
@@ -22,6 +23,8 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [customerFilter, setCustomerFilter] = useState<string>('');
 
   useEffect(() => {
     fetchOrders();
@@ -98,9 +101,41 @@ export default function Orders() {
     }
   };
 
+  const filteredOrders = orders.filter(order => {
+    const matchStatus = statusFilter === 'all' || order.status === statusFilter;
+    const customerName = order.customer?.name || 'Khách lẻ';
+    const matchCustomer = customerName.toLowerCase().includes(customerFilter.toLowerCase());
+    return matchStatus && matchCustomer;
+  });
+
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold tracking-tight">Lịch sử đơn hàng</h2>
+
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-md border">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+          <Input 
+            placeholder="Tìm kiếm theo tên khách hàng..." 
+            className="pl-9"
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+          />
+        </div>
+        <div className="sm:w-64 relative">
+          <Filter className="absolute left-3 top-3 h-4 w-4 text-slate-400 z-10" />
+          <select 
+            className="w-full pl-9 p-2 border rounded-md text-sm h-10 appearance-none bg-white relative"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="completed">Thành công</option>
+            <option value="pending">Đang xử lý</option>
+            <option value="cancelled">Đã hủy</option>
+          </select>
+        </div>
+      </div>
 
       <div className="rounded-md border bg-white overflow-x-auto">
         <Table>
@@ -116,51 +151,59 @@ export default function Orders() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow 
-                key={order._id} 
-                className="cursor-pointer hover:bg-slate-50"
-                onClick={() => {
-                  setSelectedOrder(order);
-                  setIsStatusDialogOpen(true);
-                }}
-              >
-                <TableCell className="font-medium">{order.code}</TableCell>
-                <TableCell>{format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
-                <TableCell>{order.customer?.name || 'Khách lẻ'}</TableCell>
-                <TableCell>
-                  {order.products.map((p, i) => (
-                    <div key={i} className="text-xs">
-                      {p.product?.name || 'Sản phẩm đã xóa'} x{p.quantity}
-                    </div>
-                  ))}
-                  {order.note && (
-                    <div className="text-xs text-slate-500 mt-1 italic">
-                      Ghi chú: {order.note}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
-                <TableCell>
-                  <Badge variant={getStatusColor(order.status)}>
-                    {getStatusLabel(order.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(order._id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+            {filteredOrders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                  Không tìm thấy đơn hàng nào phù hợp.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredOrders.map((order) => (
+                <TableRow 
+                  key={order._id} 
+                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={() => {
+                    setSelectedOrder(order);
+                    setIsStatusDialogOpen(true);
+                  }}
+                >
+                  <TableCell className="font-medium">{order.code}</TableCell>
+                  <TableCell>{format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
+                  <TableCell>{order.customer?.name || 'Khách lẻ'}</TableCell>
+                  <TableCell>
+                    {order.products.map((p, i) => (
+                      <div key={i} className="text-xs">
+                        {p.product?.name || 'Sản phẩm đã xóa'} x{p.quantity}
+                      </div>
+                    ))}
+                    {order.note && (
+                      <div className="text-xs text-slate-500 mt-1 italic">
+                        Ghi chú: {order.note}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusColor(order.status)}>
+                      {getStatusLabel(order.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(order._id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

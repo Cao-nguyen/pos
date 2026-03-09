@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Package, Users, FileText, Menu } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, FileText, Menu, Printer } from 'lucide-react';
 import { cn } from './ui/button';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: '/products', label: 'Sản phẩm', icon: Package },
     { href: '/customers', label: 'Khách hàng', icon: Users },
     { href: '/orders', label: 'Đơn hàng', icon: FileText },
+    { href: '/invoices', label: 'Hóa đơn', icon: Printer },
   ];
 
   return (

@@ -5,6 +5,7 @@ import POS from './pages/POS';
 import Products from './pages/Products';
 import Customers from './pages/Customers';
 import Orders from './pages/Orders';
+import Invoices from './pages/Invoices';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/invoices" element={<Invoices />} />
         </Routes>
       </Layout>
     </Router>
