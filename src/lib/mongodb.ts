@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = 'mongodb+srv://caonguyen281009:caonguyen2009@cluster0.qicty.mongodb.net/pos';
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -14,8 +14,8 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  if (!process.env.MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  if (!MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI');
   }
 
   if (cached.conn) {
@@ -27,7 +27,7 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose;
     });
   }

@@ -22,6 +22,19 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Database Connection Middleware
+  app.use(async (req, res, next) => {
+    try {
+      if (req.path.startsWith('/api')) {
+        await dbConnect();
+      }
+      next();
+    } catch (error) {
+      console.error('Database connection error:', error);
+      res.status(500).json({ message: 'Database connection failed. Is MONGODB_URI set correctly?' });
+    }
+  });
+
   // API Routes
   app.use('/api/products', productRoutes);
   app.use('/api/customers', customerRoutes);
