@@ -41,10 +41,6 @@ router.get('/', async (req, res) => {
         groupByFormat = '%Y-%m-%d';
     }
 
-    // 1. Get Summary Stats (Revenue, Profit, Count) - All time or filtered? 
-    // Usually Dashboard summary is "Today" or "All Time". Let's do "All Time" for top cards, or maybe match period?
-    // Let's match period for the cards too, makes more sense.
-    
     const orders = await Order.find({ 
       createdAt: { $gte: startDate },
       status: 'completed' 
@@ -75,15 +71,56 @@ router.get('/', async (req, res) => {
       },
       {
         $group: {
-          _id: { $dateToString: { format: groupByFormat, date: "$createdAt" } },
+          _id: { $dateToString: { format: groupByFormat, date: "$createdAt", timezone: "Asia/Ho_Chi_Minh" } },
           revenue: { $sum: "$totalAmount" }
         }
       },
       { $sort: { _id: 1 } }
     ]);
 
-    // Fill in missing gaps? (Optional, but good for UI)
-    // For simplicity, we send what we have. Frontend can handle or just show bars.
+    // 3. Get Top Selling Products (all time or current period?) -> Let's do current period
+    const topProducts = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: 'completed'
+        }
+      },
+      { $unwind: "$products" },
+      {
+        $group: {
+          _id: "$products.product",
+          totalSold: { $sum: "$products.quantity" },
+          revenue: { $sum: { $multiply: ["$products.price", "$products.quantity"] } }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products", // The actual collection name in MongoDB
+          localField: "_id",
+          foreignField: "_id",
+          as: "productInfo"
+        }
+      },
+      { $unwind: "$productInfo" },
+      {
+        $project: {
+          _id: 1,
+          name: "$productInfo.name",
+          totalSold: 1,
+          revenue: 1
+        }
+      }
+    ]);
+
+    // 4. Get Recent Orders
+    const recentOrders = await Order.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('customer', 'name phone')
+      .populate('products.product', 'name');
 
     res.json({
       revenue: totalRevenue,
@@ -92,7 +129,9 @@ router.get('/', async (req, res) => {
       chartData: chartData.map(item => ({
         name: item._id,
         total: item.revenue
-      }))
+      })),
+      topProducts,
+      recentOrders
     });
   } catch (error) {
     console.error(error);
