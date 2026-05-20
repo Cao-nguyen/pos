@@ -12,7 +12,13 @@ async function startServer() {
   const PORT = 3000;
 
   // Connect to MongoDB
-  await dbConnect();
+  try {
+    await dbConnect();
+    console.log('Connected to MongoDB');
+  } catch (error: any) {
+    console.error('Failed to connect to MongoDB. Is MONGODB_URI set in your environment variables?');
+    console.error(error.message);
+  }
 
   app.use(express.json());
 
