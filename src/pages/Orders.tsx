@@ -428,6 +428,13 @@ export default function Orders() {
                      </div>
                    ))}
                 </div>
+
+                {invoiceOrder.note && (
+                  <div className="py-3 border-b border-dashed border-slate-300 text-sm">
+                    <p className="font-semibold text-slate-700 mb-1">Ghi chú:</p>
+                    <p className="text-slate-600 italic">{invoiceOrder.note}</p>
+                  </div>
+                )}
                 
                 <div className="space-y-2 text-sm border-b border-dashed border-slate-300 py-4">
                     <div className="flex justify-between text-slate-600">

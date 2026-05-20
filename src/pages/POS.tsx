@@ -561,8 +561,15 @@ export default function POS() {
                  </div>
                ))}
             </div>
+
+            {invoiceData.note && (
+              <div className="py-3 border-b border-dashed border-slate-300 text-sm">
+                <p className="font-semibold text-slate-700 mb-1">Ghi chú:</p>
+                <p className="text-slate-600 italic">{invoiceData.note}</p>
+              </div>
+            )}
             
-            <div className="space-y-2 text-sm border-b border-dashed border-slate-300 pb-4">
+            <div className="space-y-2 text-sm border-b border-dashed border-slate-300 py-4">
                 <div className="flex justify-between text-slate-600">
                   <span>Tạm tính</span>
                   <span>{formatCurrency(invoiceData.subtotal || 0)}</span>
