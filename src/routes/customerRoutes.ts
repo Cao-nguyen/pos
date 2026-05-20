@@ -9,6 +9,7 @@ router.get('/', async (req, res) => {
     const customers = await Customer.find().sort({ createdAt: -1 });
     res.json(customers);
   } catch (error) {
+    console.error("Error fetching customers:", error);
     res.status(500).json({ message: 'Error fetching customers' });
   }
 });
@@ -19,8 +20,9 @@ router.post('/', async (req, res) => {
     const customer = new Customer(req.body);
     await customer.save();
     res.status(201).json(customer);
-  } catch (error) {
-    res.status(400).json({ message: 'Error creating customer' });
+  } catch (error: any) {
+    console.error("Error creating customer:", error);
+    res.status(400).json({ message: 'Error creating customer', error: error.message });
   }
 });
 

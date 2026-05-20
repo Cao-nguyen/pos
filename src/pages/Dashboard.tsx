@@ -55,21 +55,22 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 space-y-8 p-4 sm:p-6 md:p-8 pb-8">
+    <div className="flex-1 flex flex-col space-y-8 p-4 sm:p-6 lg:p-8">
+      {/* Header section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Tổng quan</h2>
-          <p className="text-slate-500 mt-1">Theo dõi hoạt động kinh doanh trực quan.</p>
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900">Tổng quan</h2>
+          <p className="text-slate-500 mt-2 text-base">Theo dõi hoạt động kinh doanh trực quan.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-inner border border-slate-200">
+        <div className="flex bg-slate-200/50 p-1.5 rounded-xl border border-slate-200/60 backdrop-blur-sm">
            {(['day', 'week', 'month', 'year'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+              className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 ${
                 period === p 
-                  ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200/50 transform scale-100' 
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                  ? 'bg-white shadow-md text-indigo-700 transform scale-100' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
               {p === 'day' ? 'Hôm nay' : p === 'week' ? 'Tuần này' : p === 'month' ? 'Tháng này' : 'Năm nay'}
@@ -78,62 +79,73 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* KPI Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Revenue Card */}
-        <div className="rounded-2xl border border-transparent bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-6 shadow-xl relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 bg-white/10 rounded-full w-32 h-32 blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <div className="flex flex-row items-center justify-between pb-4 relative z-10">
-            <h3 className="text-sm font-medium text-indigo-100 uppercase tracking-wider">Doanh thu</h3>
-            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-               <DollarSign className="h-5 w-5 text-white" />
-            </div>
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-white p-7 shadow-xl shadow-indigo-900/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform duration-500">
+            <DollarSign className="w-24 h-24" />
           </div>
-          <div className="flex flex-col gap-1 relative z-10">
-            <div className="text-3xl font-bold tracking-tight">{formatCurrency(stats.revenue)}</div>
-            <p className="text-xs text-indigo-100 mt-1 flex items-center gap-1">
-              Trong {period === 'day' ? 'hôm nay' : period === 'week' ? 'tuần này' : period === 'month' ? 'tháng này' : 'năm nay'}
-            </p>
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-white/20 rounded-2xl backdrop-blur-md">
+                 <DollarSign className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-base font-semibold text-indigo-100 tracking-wide">Doanh thu</h3>
+            </div>
+            <div>
+              <div className="text-4xl font-black tracking-tight mb-2">{formatCurrency(stats.revenue)}</div>
+              <p className="text-sm text-indigo-200 font-medium opacity-90">
+                Trong {period === 'day' ? 'hôm nay' : period === 'week' ? 'tuần này' : period === 'month' ? 'tháng này' : 'năm nay'}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Profit Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex flex-row items-center justify-between pb-4">
-             <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider">Lợi nhuận</h3>
-             <div className="p-2 bg-emerald-50 rounded-xl">
-               <TrendingUp className="h-5 w-5 text-emerald-600" />
-             </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="text-3xl font-bold tracking-tight text-slate-900">{formatCurrency(stats.profit)}</div>
-            <p className="text-xs text-slate-500 mt-1">Lợi nhuận gộp</p>
+        <div className="rounded-3xl bg-white border border-slate-200/60 p-7 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+          <div className="flex flex-col h-full justify-between relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+               <div className="p-2.5 bg-emerald-100 rounded-2xl text-emerald-600">
+                 <TrendingUp className="h-6 w-6" />
+               </div>
+               <h3 className="text-base font-semibold text-slate-600 tracking-wide">Lợi nhuận gộp</h3>
+            </div>
+            <div>
+              <div className="text-4xl font-black tracking-tight text-slate-900 mb-2">{formatCurrency(stats.profit)}</div>
+              <p className="text-sm text-slate-500 font-medium">Lợi nhuận ước tính</p>
+            </div>
           </div>
         </div>
 
         {/* Orders Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex flex-row items-center justify-between pb-4">
-             <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider">Đơn hàng</h3>
-             <div className="p-2 bg-blue-50 rounded-xl">
-                <ShoppingBag className="h-5 w-5 text-blue-600" />
-             </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="text-3xl font-bold tracking-tight text-slate-900">{stats.orderCount}</div>
-            <p className="text-xs text-slate-500 mt-1">Đơn hàng thành công</p>
+        <div className="rounded-3xl bg-white border border-slate-200/60 p-7 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+          <div className="flex flex-col h-full justify-between relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+               <div className="p-2.5 bg-blue-100 rounded-2xl text-blue-600">
+                  <ShoppingBag className="h-6 w-6" />
+               </div>
+               <h3 className="text-base font-semibold text-slate-600 tracking-wide">Tổng đơn hàng</h3>
+            </div>
+            <div>
+              <div className="text-4xl font-black tracking-tight text-slate-900 mb-2">{stats.orderCount}</div>
+              <p className="text-sm text-slate-500 font-medium">Đơn hàng thành công</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-7 lg:grid-cols-7">
+      <div className="grid gap-6 md:grid-cols-12 lg:grid-cols-12">
         {/* Chart */}
-        <div className="col-span-1 md:col-span-4 rounded-2xl border border-slate-200 bg-white p-6 flex flex-col shadow-sm">
+        <div className="col-span-1 md:col-span-8 rounded-3xl border border-slate-200/60 bg-white p-7 flex flex-col shadow-sm">
           <div className="flex items-center justify-between mb-8">
              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Biểu Đồ Doanh Thu</h3>
-                <p className="text-sm text-slate-500 mt-1">Đồ thị biến động doanh thu theo thời gian</p>
+                <h3 className="text-xl font-bold text-slate-900">Biểu đồ doanh thu</h3>
+                <p className="text-sm text-slate-500 mt-1 font-medium">Biến động doanh thu theo thời gian</p>
              </div>
-             <CalendarIcon className="h-5 w-5 text-slate-400" />
+             <div className="p-2.5 bg-slate-100 rounded-xl">
+               <CalendarIcon className="h-5 w-5 text-slate-600" />
+             </div>
           </div>
           <div className="h-[350px] w-full flex-grow">
             {loading ? (
@@ -179,13 +191,15 @@ export default function Dashboard() {
         </div>
 
         {/* Top Products */}
-        <div className="col-span-1 md:col-span-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden flex flex-col">
+        <div className="col-span-1 md:col-span-4 rounded-3xl border border-slate-200/60 bg-white p-7 shadow-sm overflow-hidden flex flex-col">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Sản Phẩm Bán Chạy</h3>
-                  <p className="text-sm text-slate-500 mt-1">Top 5 sản phẩm đóng góp nhiều nhất</p>
+                  <h3 className="text-xl font-bold text-slate-900">Sản phẩm bán chạy</h3>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">Đóng góp doanh thu cao nhất</p>
                 </div>
-                <Package className="h-5 w-5 text-slate-400" />
+                <div className="p-2.5 bg-slate-100 rounded-xl">
+                  <Package className="h-5 w-5 text-slate-600" />
+                </div>
             </div>
             
             <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
@@ -232,13 +246,13 @@ export default function Dashboard() {
       </div>
 
        {/* Recent Orders Table */}
-       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+       <div className="rounded-3xl border border-slate-200/60 bg-white shadow-sm overflow-hidden mb-8">
+          <div className="p-7 border-b border-slate-100 flex items-center justify-between">
               <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Giao Dịch Gần Đây</h3>
-                  <p className="text-sm text-slate-500 mt-1">Các đơn hàng mới nhất được tạo</p>
+                  <h3 className="text-xl font-bold text-slate-900">Giao dịch gần đây</h3>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">Danh sách các đơn hàng mới nhất</p>
               </div>
-              <Link to="/orders" className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+              <Link to="/orders" className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-sm font-semibold rounded-xl text-slate-700 transition-colors">
                   Xem tất cả <ArrowRight className="h-4 w-4" />
               </Link>
           </div>

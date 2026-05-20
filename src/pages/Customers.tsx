@@ -23,11 +23,21 @@ export default function Customers() {
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = () => {
-    fetch('/api/customers')
-      .then(res => res.json())
-      .then(setCustomers)
-      .catch(console.error);
+  const fetchCustomers = async () => {
+    try {
+      const res = await fetch('/api/customers');
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setCustomers(data);
+      } else {
+        setCustomers([]);
+        console.error('Invalid data format', data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      setCustomers([]);
+    }
   };
 
   const confirmDelete = async () => {

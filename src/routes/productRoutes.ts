@@ -9,6 +9,7 @@ router.get('/', async (req, res) => {
     const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).json({ message: 'Error fetching products' });
   }
 });
@@ -19,8 +20,9 @@ router.post('/', async (req, res) => {
     const product = new Product(req.body);
     await product.save();
     res.status(201).json(product);
-  } catch (error) {
-    res.status(400).json({ message: 'Error creating product' });
+  } catch (error: any) {
+    console.error("Error creating product:", error);
+    res.status(400).json({ message: 'Error creating product', error: error.message });
   }
 });
 

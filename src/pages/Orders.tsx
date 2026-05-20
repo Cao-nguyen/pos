@@ -30,11 +30,21 @@ export default function Orders() {
     fetchOrders();
   }, []);
 
-  const fetchOrders = () => {
-    fetch('/api/orders')
-      .then(res => res.json())
-      .then(setOrders)
-      .catch(console.error);
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch('/api/orders');
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOrders(data);
+      } else {
+        setOrders([]);
+        console.error('Invalid data format', data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      setOrders([]);
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {

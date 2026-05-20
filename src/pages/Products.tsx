@@ -24,11 +24,21 @@ export default function Products() {
     fetchProducts();
   }, []);
 
-  const fetchProducts = () => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(setProducts)
-      .catch(console.error);
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        setProducts([]);
+        console.error('Invalid data format', data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -37,8 +37,15 @@ export default function POS() {
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    fetch('/api/products').then(res => res.json()).then(setProducts);
-    fetch('/api/customers').then(res => res.json()).then(setCustomers);
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setProducts(data); })
+      .catch(console.error);
+
+    fetch('/api/customers')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setCustomers(data); })
+      .catch(console.error);
   }, []);
 
   const addToCart = (product: Product) => {
@@ -109,8 +116,15 @@ export default function POS() {
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
       // Refresh data
-      fetch('/api/products').then(res => res.json()).then(setProducts);
-      fetch('/api/customers').then(res => res.json()).then(setCustomers);
+      fetch('/api/products')
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setProducts(data); })
+        .catch(console.error);
+        
+      fetch('/api/customers')
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setCustomers(data); })
+        .catch(console.error);
     } catch (error) {
       alert('Lỗi thanh toán: ' + error);
     }
