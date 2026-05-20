@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { generateVietQR } from '../utils/qr';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -35,6 +37,13 @@ export default function POS() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false); // Mobile Cart Drawer
   const [note, setNote] = useState('');
+
+  const [shippingFee, setShippingFee] = useState(0);
+  const [vatRate, setVatRate] = useState(0);
+  const [customDiscount, setCustomDiscount] = useState(0);
+
+  const [invoiceData, setInvoiceData] = useState<any>(null); // to show invoice modal
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/products')
@@ -78,9 +87,16 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = (usePoints && selectedCustomer) ? Math.min(subtotal, selectedCustomer.points * 10) : 0;
-  const total = subtotal - discount;
-  const pointsUsed = discount / 10;
+  const pointsDiscount = (usePoints && selectedCustomer) ? Math.min(subtotal, selectedCustomer.points * 10) : 0;
+  
+  const discountableAmount = Math.max(0, subtotal - pointsDiscount);
+  const finalCustomDiscount = Math.min(discountableAmount, customDiscount);
+  
+  const amountBeforeVat = subtotal - pointsDiscount - finalCustomDiscount + shippingFee;
+  const vatAmount = Math.round(amountBeforeVat * (vatRate / 100));
+  
+  const total = amountBeforeVat + vatAmount;
+  const pointsUsed = pointsDiscount / 10;
 
   const [status, setStatus] = useState<'pending' | 'completed'>('completed');
 
@@ -88,15 +104,23 @@ export default function POS() {
     try {
       const payload = {
         customerId: selectedCustomer?._id,
+        customerName: selectedCustomer?.name,
+        customerPoints: selectedCustomer?.points,
         products: cart.map(item => ({
           productId: item._id,
+          name: item.name,
           quantity: item.quantity,
           price: item.price
         })),
         pointsUsed: usePoints ? pointsUsed : 0,
-        discountAmount: discount,
+        pointsDiscount: pointsDiscount,
+        customDiscount: finalCustomDiscount,
+        shippingFee: shippingFee,
+        vatRate: vatRate,
+        vatAmount: vatAmount,
+        subtotal: subtotal,
         totalAmount: total,
-        status, // Add status to payload
+        status, 
         note
       };
 
@@ -107,11 +131,17 @@ export default function POS() {
       });
 
       if (!res.ok) throw new Error('Checkout failed');
-
-      alert('Thanh toán thành công!');
+      const savedOrder = await res.json();
+      
+      setInvoiceData({ ...payload, orderCode: savedOrder.code || 'HD-NEW' });
+      setIsInvoiceOpen(true);
+      
       setCart([]);
       setSelectedCustomer(null);
       setUsePoints(false);
+      setCustomDiscount(0);
+      setShippingFee(0);
+      setVatRate(0);
       setNote('');
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
@@ -259,18 +289,63 @@ export default function POS() {
             </div>
         </div>
 
-        <div className="space-y-2 text-sm bg-white p-4 rounded-xl border border-slate-200 mb-4">
-          <div className="flex justify-between text-slate-500 font-medium">
+        <div className="space-y-3 text-sm bg-white p-4 rounded-xl border border-slate-200 mb-4">
+          <div className="flex justify-between items-center text-slate-500 font-medium">
             <span>Tạm tính</span>
             <span className="text-slate-900">{formatCurrency(subtotal)}</span>
           </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-emerald-600 font-medium">
+          {pointsDiscount > 0 && (
+            <div className="flex justify-between items-center text-emerald-600 font-medium">
               <span>Giảm giá điểm</span>
-              <span>-{formatCurrency(discount)}</span>
+              <span>-{formatCurrency(pointsDiscount)}</span>
             </div>
           )}
-          <div className="flex justify-between font-bold text-xl pt-3 border-t border-slate-100 text-slate-900">
+          <div className="flex justify-between items-center text-slate-500">
+            <span>Giảm giá thêm</span>
+            <div className="flex items-center">
+               <span className="mr-1 text-slate-400">₫</span>
+               <input 
+                 type="number" min="0" 
+                 value={customDiscount}
+                 onChange={e => setCustomDiscount(Number(e.target.value))}
+                 className="w-24 text-right bg-slate-50 border border-slate-200 rounded p-1 text-sm focus:ring-1 focus:ring-indigo-500 hide-arrows"
+               />
+            </div>
+          </div>
+          <div className="flex justify-between items-center text-slate-500">
+            <span>Phí vận chuyển</span>
+            <div className="flex items-center">
+               <span className="mr-1 text-slate-400">₫</span>
+               <input 
+                 type="number" min="0" 
+                 value={shippingFee}
+                 onChange={e => setShippingFee(Number(e.target.value))}
+                 className="w-24 text-right bg-slate-50 border border-slate-200 rounded p-1 text-sm focus:ring-1 focus:ring-indigo-500 hide-arrows"
+               />
+            </div>
+          </div>
+          <div className="flex justify-between items-center text-slate-500 pb-2 border-b border-slate-100">
+            <span>VAT</span>
+            <div className="flex items-center">
+               <select 
+                 value={vatRate} 
+                 onChange={e => setVatRate(Number(e.target.value))}
+                 className="w-20 bg-slate-50 border border-slate-200 rounded p-1 text-sm focus:ring-1 focus:ring-indigo-500"
+               >
+                 <option value={0}>0%</option>
+                 <option value={5}>5%</option>
+                 <option value={8}>8%</option>
+                 <option value={10}>10%</option>
+               </select>
+            </div>
+          </div>
+          {vatAmount > 0 && (
+            <div className="flex justify-between items-center text-slate-500 text-xs">
+               <span>Tiền thuế VAT</span>
+               <span>{formatCurrency(vatAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-xl pt-2 text-slate-900">
             <span>Tổng cộng</span>
             <span className="text-indigo-600">{formatCurrency(total)}</span>
           </div>
@@ -397,10 +472,22 @@ export default function POS() {
               <span className="text-slate-500">Số lượng:</span>
               <span className="font-semibold text-slate-900">{cart.reduce((a,b) => a+b.quantity, 0)} sản phẩm</span>
             </div>
-            {discount > 0 && (
+            {pointsDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-emerald-600 font-medium whitespace-nowrap">Giảm giá:</span>
-                  <span className="font-bold text-emerald-600">-{formatCurrency(discount)}</span>
+                  <span className="text-emerald-600 font-medium whitespace-nowrap">Giảm giá điểm:</span>
+                  <span className="font-bold text-emerald-600">-{formatCurrency(pointsDiscount)}</span>
+                </div>
+            )}
+            {finalCustomDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-emerald-600 font-medium whitespace-nowrap">Giảm giá thêm:</span>
+                  <span className="font-bold text-emerald-600">-{formatCurrency(finalCustomDiscount)}</span>
+                </div>
+            )}
+            {shippingFee > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-emerald-600 font-medium whitespace-nowrap">Phí vận chuyển:</span>
+                  <span className="font-bold text-emerald-600">+{formatCurrency(shippingFee)}</span>
                 </div>
             )}
             <div className="pt-3 border-t border-slate-200/60 flex justify-between items-end">
@@ -436,6 +523,104 @@ export default function POS() {
             </Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Invoice Modal */}
+      <Dialog 
+        isOpen={isInvoiceOpen} 
+        onClose={() => setIsInvoiceOpen(false)}
+        title="Hoá đơn thanh toán"
+      >
+        {invoiceData && (
+          <div className="space-y-6 pt-4 max-h-[80vh] overflow-y-auto print:max-h-full print:block" id="invoice-print-area">
+            <div className="text-center space-y-1 pb-4 border-b border-dashed border-slate-300">
+               <h2 className="text-xl font-black text-slate-900 uppercase">HOÁ ĐƠN BÁN HÀNG</h2>
+               <div className="text-sm text-slate-600 text-left mt-4 space-y-1">
+                 {invoiceData.customerName && (
+                   <p><strong>Tên khách hàng:</strong> {invoiceData.customerName}</p>
+                 )}
+                 {invoiceData.customerPoints !== undefined && (
+                   <p><strong>Điểm tích luỹ:</strong> {invoiceData.customerPoints - pointsUsed}</p>
+                 )}
+                 <p><strong>Thời gian tạo hoá đơn:</strong> {new Date().toLocaleString('vi-VN')}</p>
+               </div>
+            </div>
+            
+            <div>
+               <h3 className="text-base font-bold text-slate-900 mb-2">Các sản phẩm</h3>
+               <div className="space-y-2 text-sm font-medium border-b border-dashed border-slate-300 pb-4">
+               {invoiceData.products.map((item: any, idx: number) => (
+                 <div key={idx} className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <div className="text-slate-800">{item.name}</div>
+                      <div className="text-slate-500 text-xs">{item.quantity} x {formatCurrency(item.price)}</div>
+                    </div>
+                    <div className="text-slate-900">
+                      {formatCurrency(item.price * item.quantity)}
+                    </div>
+                 </div>
+               ))}
+            </div>
+            
+            <div className="space-y-2 text-sm border-b border-dashed border-slate-300 pb-4">
+                <div className="flex justify-between text-slate-600">
+                  <span>Tạm tính</span>
+                  <span>{formatCurrency(invoiceData.subtotal || 0)}</span>
+                </div>
+                {invoiceData.pointsDiscount > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Trừ điểm</span>
+                    <span>-{formatCurrency(invoiceData.pointsDiscount)}</span>
+                  </div>
+                )}
+                {invoiceData.customDiscount > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Giảm giá thêm</span>
+                    <span>-{formatCurrency(invoiceData.customDiscount)}</span>
+                  </div>
+                )}
+                {invoiceData.shippingFee > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Vận chuyển</span>
+                    <span>{formatCurrency(invoiceData.shippingFee)}</span>
+                  </div>
+                )}
+                {invoiceData.vatAmount > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>VAT ({invoiceData.vatRate}%)</span>
+                    <span>{formatCurrency(invoiceData.vatAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-lg pt-2 text-slate-900">
+                  <span>Thành tiền</span>
+                  <span>{formatCurrency(invoiceData.totalAmount)}</span>
+                </div>
+            </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 print:bg-white print:border print:border-slate-200 mt-4">
+                <p className="text-sm font-semibold text-slate-600 text-center">Quét mã QR để thanh toán</p>
+                <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200">
+                    <QRCodeSVG 
+                      value={generateVietQR("0002010102111531397007040052044600009362810200938550010A000000727012500069704230111936281020090208QRIBFTTA5204513753037045802VN5913LY CAO NGUYEN6006Ha Noi8707CLASSIC6304916D", invoiceData.totalAmount || 0, `LST${(invoiceData.totalAmount || 0) / 1000}K`)}
+                      size={200}
+                      level="Q"
+                    />
+                </div>
+                <p className="text-sm text-center text-slate-800 font-medium">Nội dung chuyển khoản: LST{(invoiceData.totalAmount || 0) / 1000}K</p>
+                <p className="text-sm text-center text-slate-800 font-bold italic mt-4">Cảm ơn và hẹn gặp lại quý khách!</p>
+            </div>
+            
+            <div className="flex gap-3 pt-4 print:hidden">
+              <Button onClick={() => window.print()} variant="outline" className="flex-1 border-slate-300">
+                 In hoá đơn
+              </Button>
+              <Button onClick={() => setIsInvoiceOpen(false)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                 Đóng
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );

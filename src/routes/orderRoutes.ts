@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { customerId, products, pointsUsed, totalAmount, discountAmount, status, note } = req.body;
+    const { customerId, products, pointsUsed, pointsDiscount, customDiscount, shippingFee, vatRate, vatAmount, subtotal, totalAmount, status, note } = req.body;
 
     // 1. Validate Customer Points
     if (customerId && pointsUsed > 0) {
@@ -56,8 +56,13 @@ router.post('/', async (req, res) => {
         price: p.price
       })),
       totalAmount,
+      subtotal,
       pointsUsed,
-      discountAmount,
+      pointsDiscount,
+      customDiscount,
+      shippingFee,
+      vatRate,
+      vatAmount,
       status: status || 'completed',
       note
     });

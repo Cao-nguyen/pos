@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from 'react';
+import { toPng } from 'html-to-image';
+import { QRCodeSVG } from 'qrcode.react';
+import { generateVietQR } from '../utils/qr';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
 import { format } from 'date-fns';
 import { Dialog } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Trash2, Search, Filter } from 'lucide-react';
+import { Trash2, Search, Filter, Eye } from 'lucide-react';
 
 interface Order {
   _id: string;
   code: string;
-  customer?: { name: string };
-  products: { product: { name: string }, quantity: number }[];
+  customer?: { name: string, points?: number };
+  products: { product: { name: string }, quantity: number, price: number }[];
   totalAmount: number;
+  subtotal: number;
+  pointsDiscount: number;
+  customDiscount: number;
+  shippingFee: number;
+  vatAmount: number;
+  vatRate: number;
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: string;
   note?: string;
@@ -25,6 +34,7 @@ export default function Orders() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [customerFilter, setCustomerFilter] = useState<string>('');
+  const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -87,6 +97,24 @@ export default function Orders() {
         console.error(error);
         alert('Lỗi xóa đơn hàng');
       }
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    const element = document.getElementById('invoice-print-area');
+    if (!element) return;
+    try {
+      const data = await toPng(element, { 
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff'
+      });
+      const link = document.createElement('a');
+      link.href = data;
+      link.download = `hoadon-${invoiceOrder?.code || 'HD'}.png`;
+      link.click();
+    } catch (error) {
+      console.error('Lỗi tải ảnh:', error);
     }
   };
 
@@ -220,17 +248,34 @@ export default function Orders() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right pr-4">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteId(order._id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        {order.status !== 'completed' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvoiceOrder(order);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {order.status !== 'completed' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(order._id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -251,8 +296,44 @@ export default function Orders() {
           </p>
           {selectedOrder?.note && (
             <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-sm">
-              <span className="font-bold text-amber-800 uppercase tracking-wider text-[10px] block mb-1">Ghi chú của đơn hàng</span>
+              <span className="font-bold text-amber-800 uppercase tracking-wider text-[10px] block mb-1">Ghi chú</span>
               <span className="text-amber-900 font-medium">{selectedOrder.note}</span>
+            </div>
+          )}
+          {selectedOrder && (
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2 text-sm">
+               <div className="flex justify-between text-slate-500">
+                 <span>Tạm tính</span>
+                 <span className="text-slate-900">{formatCurrency(selectedOrder.subtotal || 0)}</span>
+               </div>
+               {selectedOrder.pointsDiscount > 0 && (
+                 <div className="flex justify-between text-emerald-600">
+                   <span>Trừ điểm</span>
+                   <span>-{formatCurrency(selectedOrder.pointsDiscount)}</span>
+                 </div>
+               )}
+               {selectedOrder.customDiscount > 0 && (
+                 <div className="flex justify-between text-emerald-600">
+                   <span>Giảm giá thêm</span>
+                   <span>-{formatCurrency(selectedOrder.customDiscount)}</span>
+                 </div>
+               )}
+               {selectedOrder.shippingFee > 0 && (
+                 <div className="flex justify-between text-slate-500">
+                   <span>Phí vận chuyển</span>
+                   <span className="text-slate-900">+{formatCurrency(selectedOrder.shippingFee)}</span>
+                 </div>
+               )}
+               {selectedOrder.vatAmount > 0 && (
+                 <div className="flex justify-between text-slate-500">
+                   <span>VAT ({selectedOrder.vatRate}%)</span>
+                   <span className="text-slate-900">+{formatCurrency(selectedOrder.vatAmount)}</span>
+                 </div>
+               )}
+               <div className="flex justify-between font-bold border-t border-slate-200 pt-2 mt-2">
+                 <span className="text-slate-700">Tổng thanh toán</span>
+                 <span className="text-indigo-600 text-base">{formatCurrency(selectedOrder.totalAmount)}</span>
+               </div>
             </div>
           )}
           <div className="grid gap-3">
@@ -308,6 +389,109 @@ export default function Orders() {
             <Button variant="destructive" className="rounded-xl font-bold" onClick={confirmDelete}>Xóa vĩnh viễn</Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Invoice Modal */}
+      <Dialog 
+        isOpen={!!invoiceOrder} 
+        onClose={() => setInvoiceOrder(null)}
+        title="Hoá đơn thanh toán"
+      >
+        {invoiceOrder && (
+          <div className="space-y-6 pt-4 max-h-[80vh] overflow-y-auto print:max-h-full print:block">
+            <div id="invoice-print-area" className="bg-white p-4">
+                <div className="text-center space-y-1 pb-4 border-b border-dashed border-slate-300">
+                   <h2 className="text-xl font-black text-slate-900 uppercase">HOÁ ĐƠN BÁN HÀNG</h2>
+                   <div className="text-sm text-slate-600 text-left mt-4 space-y-1">
+                     {invoiceOrder.customer && (
+                       <p><strong>Tên khách hàng:</strong> {invoiceOrder.customer.name}</p>
+                     )}
+                     {invoiceOrder.customer?.points !== undefined && (
+                       <p><strong>Điểm tích luỹ:</strong> {invoiceOrder.customer.points}</p>
+                     )}
+                     <p><strong>Thời gian tạo hoá đơn:</strong> {format(new Date(invoiceOrder.createdAt), 'dd/MM/yyyy HH:mm')}</p>
+                   </div>
+                </div>
+                
+                <div>
+                   <h3 className="text-base font-bold text-slate-900 mb-2 mt-4">Các sản phẩm</h3>
+                   <div className="space-y-2 text-sm font-medium border-b border-dashed border-slate-300 pb-4">
+                   {invoiceOrder.products.map((item: any, idx: number) => (
+                     <div key={idx} className="flex justify-between items-start gap-2">
+                        <div className="flex-1">
+                          <div className="text-slate-800">{item.product?.name || 'Sản phẩm đã xóa'}</div>
+                          <div className="text-slate-500 text-xs">{item.quantity} x {formatCurrency(item.price || 0)}</div>
+                        </div>
+                        <div className="text-slate-900">
+                          {formatCurrency((item.price || 0) * item.quantity)}
+                        </div>
+                     </div>
+                   ))}
+                </div>
+                
+                <div className="space-y-2 text-sm border-b border-dashed border-slate-300 py-4">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Tạm tính</span>
+                      <span>{formatCurrency(invoiceOrder.subtotal || invoiceOrder.totalAmount)}</span>
+                    </div>
+                    {invoiceOrder.pointsDiscount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Trừ điểm</span>
+                        <span>-{formatCurrency(invoiceOrder.pointsDiscount)}</span>
+                      </div>
+                    )}
+                    {invoiceOrder.customDiscount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Giảm giá thêm</span>
+                        <span>-{formatCurrency(invoiceOrder.customDiscount)}</span>
+                      </div>
+                    )}
+                    {invoiceOrder.shippingFee > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Vận chuyển</span>
+                        <span>{formatCurrency(invoiceOrder.shippingFee)}</span>
+                      </div>
+                    )}
+                    {invoiceOrder.vatAmount > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>VAT ({invoiceOrder.vatRate || 0}%)</span>
+                        <span>{formatCurrency(invoiceOrder.vatAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-black text-lg pt-2 text-slate-900">
+                      <span>Thành tiền</span>
+                      <span>{formatCurrency(invoiceOrder.totalAmount)}</span>
+                    </div>
+                </div>
+                </div>
+
+                <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 print:bg-white print:border print:border-slate-200 mt-4">
+                    <p className="text-sm font-semibold text-slate-600 text-center">Quét mã QR để thanh toán</p>
+                    <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200">
+                        <QRCodeSVG 
+                          value={generateVietQR("0002010102111531397007040052044600009362810200938550010A000000727012500069704230111936281020090208QRIBFTTA5204513753037045802VN5913LY CAO NGUYEN6006Ha Noi8707CLASSIC6304916D", invoiceOrder.totalAmount || 0, `LST${(invoiceOrder.totalAmount || 0) / 1000}K`)}
+                          size={200}
+                          level="Q"
+                        />
+                    </div>
+                    <p className="text-sm text-center text-slate-800 font-medium">Nội dung chuyển khoản: LST{(invoiceOrder.totalAmount || 0) / 1000}K</p>
+                    <p className="text-sm text-center text-slate-800 font-bold italic mt-4">Cảm ơn và hẹn gặp lại quý khách!</p>
+                </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4 print:hidden">
+              <Button onClick={() => window.print()} variant="outline" className="flex-1 border-slate-300">
+                 In hoá đơn
+              </Button>
+              <Button onClick={handleDownloadInvoice} variant="outline" className="flex-1 border-slate-300 text-indigo-600 hover:text-indigo-700">
+                 Tải ảnh
+              </Button>
+              <Button onClick={() => setInvoiceOrder(null)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                 Đóng
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );

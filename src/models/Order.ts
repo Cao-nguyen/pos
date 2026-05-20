@@ -6,12 +6,17 @@ export interface IOrder extends Document {
   products: {
     product: mongoose.Types.ObjectId;
     quantity: number;
-    price: number; // Snapshot of price at time of sale
+    price: number; 
   }[];
   status: 'pending' | 'completed' | 'cancelled';
-  totalAmount: number;
+  totalAmount: number; // Final total after everything
+  subtotal: number;
   pointsUsed: number;
-  discountAmount: number;
+  pointsDiscount: number;
+  customDiscount: number;
+  shippingFee: number;
+  vatRate: number;
+  vatAmount: number;
   note?: string;
 }
 
@@ -29,12 +34,17 @@ const OrderSchema: Schema = new Schema({
     default: 'pending' 
   },
   totalAmount: { type: Number, required: true },
+  subtotal: { type: Number, default: 0 },
   pointsUsed: { type: Number, default: 0 },
-  discountAmount: { type: Number, default: 0 },
+  pointsDiscount: { type: Number, default: 0 },
+  customDiscount: { type: Number, default: 0 },
+  shippingFee: { type: Number, default: 0 },
+  vatRate: { type: Number, default: 0 },
+  vatAmount: { type: Number, default: 0 },
   note: { type: String },
 }, { 
   timestamps: true,
-  collection: 'orders' // Explicitly set collection name
+  collection: 'orders'
 });
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);
