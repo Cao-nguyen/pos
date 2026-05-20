@@ -25,6 +25,7 @@ interface Order {
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: string;
   note?: string;
+  mergedOrders?: Order[];
 }
 
 export default function Orders() {
@@ -35,6 +36,7 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [customerFilter, setCustomerFilter] = useState<string>('');
   const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchOrders();
@@ -155,8 +157,8 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex-1 relative">
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm items-center">
+        <div className="flex-1 relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input 
             placeholder="Tìm kiếm theo tên khách hàng..." 
@@ -165,7 +167,7 @@ export default function Orders() {
             onChange={(e) => setCustomerFilter(e.target.value)}
           />
         </div>
-        <div className="sm:w-64 relative">
+        <div className="sm:w-64 relative w-full">
           <Filter className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10" />
           <select 
             className="w-full pl-11 pr-10 border-slate-200 rounded-xl text-base h-12 appearance-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 relative transition-colors cursor-pointer"
@@ -182,6 +184,38 @@ export default function Orders() {
              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </div>
         </div>
+        
+        {selectedOrderIds.length > 1 && (
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-6 rounded-xl shrink-0"
+            onClick={() => {
+              const ordersToMerge = orders.filter(o => selectedOrderIds.includes(o._id));
+              const mergedProducts: any[] = [];
+              ordersToMerge.forEach(o => mergedProducts.push(...o.products));
+
+              const mergedOrder = {
+                _id: 'merged',
+                code: 'GỘP: ' + ordersToMerge.map(o => o.code).join(', '),
+                createdAt: new Date().toISOString(),
+                customer: ordersToMerge[0].customer,
+                products: mergedProducts,
+                subtotal: ordersToMerge.reduce((sum, o) => sum + (o.subtotal || o.totalAmount), 0),
+                totalAmount: ordersToMerge.reduce((sum, o) => sum + o.totalAmount, 0),
+                pointsDiscount: ordersToMerge.reduce((sum, o) => sum + (o.pointsDiscount || 0), 0),
+                customDiscount: ordersToMerge.reduce((sum, o) => sum + (o.customDiscount || 0), 0),
+                shippingFee: ordersToMerge.reduce((sum, o) => sum + (o.shippingFee || 0), 0),
+                vatRate: ordersToMerge[0].vatRate,
+                vatAmount: ordersToMerge.reduce((sum, o) => sum + (o.vatAmount || 0), 0),
+                status: 'completed' as 'completed',
+                mergedOrders: ordersToMerge
+              };
+              
+              setInvoiceOrder(mergedOrder as Order);
+            }}
+          >
+            Gộp {selectedOrderIds.length} hoá đơn
+          </Button>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -189,6 +223,20 @@ export default function Orders() {
           <Table>
             <TableHeader className="bg-slate-50/80">
               <TableRow>
+                <TableHead className="w-12 px-4 text-center">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedOrderIds(filteredOrders.map(o => o._id));
+                      } else {
+                        setSelectedOrderIds([]);
+                      }
+                    }}
+                  />
+                </TableHead>
                 <TableHead className="min-w-[120px] font-semibold text-slate-500 uppercase text-xs tracking-wider">Mã đơn</TableHead>
                 <TableHead className="min-w-[140px] font-semibold text-slate-500 uppercase text-xs tracking-wider">Ngày tạo</TableHead>
                 <TableHead className="min-w-[140px] font-semibold text-slate-500 uppercase text-xs tracking-wider">Khách hàng</TableHead>
@@ -218,6 +266,20 @@ export default function Orders() {
                       setIsStatusDialogOpen(true);
                     }}
                   >
+                    <TableCell className="px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input 
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        checked={selectedOrderIds.includes(order._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds([...selectedOrderIds, order._id]);
+                          } else {
+                            setSelectedOrderIds(selectedOrderIds.filter(id => id !== order._id));
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="font-bold text-indigo-600">{order.code}</TableCell>
                     <TableCell className="text-slate-500 text-sm">{format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
                     <TableCell>
@@ -402,6 +464,9 @@ export default function Orders() {
             <div id="invoice-print-area" className="bg-white p-4">
                 <div className="text-center space-y-1 pb-4 border-b border-dashed border-slate-300">
                    <h2 className="text-xl font-black text-slate-900 uppercase">HOÁ ĐƠN BÁN HÀNG</h2>
+                   {invoiceOrder.code.startsWith('GỘP') && (
+                     <p className="text-xs text-indigo-600 font-semibold mt-1">{invoiceOrder.code}</p>
+                   )}
                    <div className="text-sm text-slate-600 text-left mt-4 space-y-1">
                      {invoiceOrder.customer && (
                        <p><strong>Tên khách hàng:</strong> {invoiceOrder.customer.name}</p>
@@ -416,25 +481,50 @@ export default function Orders() {
                 <div>
                    <h3 className="text-base font-bold text-slate-900 mb-2 mt-4">Các sản phẩm</h3>
                    <div className="space-y-2 text-sm font-medium border-b border-dashed border-slate-300 pb-4">
-                   {invoiceOrder.products.map((item: any, idx: number) => (
-                     <div key={idx} className="flex justify-between items-start gap-2">
-                        <div className="flex-1">
-                          <div className="text-slate-800">{item.product?.name || 'Sản phẩm đã xóa'}</div>
-                          <div className="text-slate-500 text-xs">{item.quantity} x {formatCurrency(item.price || 0)}</div>
-                        </div>
-                        <div className="text-slate-900">
-                          {formatCurrency((item.price || 0) * item.quantity)}
-                        </div>
-                     </div>
-                   ))}
+                   {invoiceOrder.mergedOrders ? (
+                     invoiceOrder.mergedOrders.map((order, orderIdx) => (
+                       <div key={order._id} className={orderIdx > 0 ? "mt-4 pt-4 border-t border-dashed border-slate-300" : ""}>
+                         {order.products.map((item: any, idx: number) => (
+                           <div key={idx} className="flex justify-between items-start gap-2 mb-2">
+                              <div className="flex-1">
+                                <div className="text-slate-800">{item.product?.name || 'Sản phẩm đã xóa'}</div>
+                                <div className="text-slate-500 text-xs">{item.quantity} x {formatCurrency(item.price || 0)}</div>
+                              </div>
+                              <div className="text-slate-900">
+                                {formatCurrency((item.price || 0) * item.quantity)}
+                              </div>
+                           </div>
+                         ))}
+                         {order.note && (
+                           <div className="mt-2 text-sm">
+                             <p className="font-semibold text-slate-700 mb-1">Ghi chú:</p>
+                             <p className="text-slate-600 italic">{order.note}</p>
+                           </div>
+                         )}
+                       </div>
+                     ))
+                   ) : (
+                     <>
+                       {invoiceOrder.products.map((item: any, idx: number) => (
+                         <div key={idx} className="flex justify-between items-start gap-2 mb-2">
+                            <div className="flex-1">
+                              <div className="text-slate-800">{item.product?.name || 'Sản phẩm đã xóa'}</div>
+                              <div className="text-slate-500 text-xs">{item.quantity} x {formatCurrency(item.price || 0)}</div>
+                            </div>
+                            <div className="text-slate-900">
+                              {formatCurrency((item.price || 0) * item.quantity)}
+                            </div>
+                         </div>
+                       ))}
+                       {invoiceOrder.note && (
+                         <div className="mt-3 pt-3 border-t border-dashed border-slate-300 text-sm">
+                           <p className="font-semibold text-slate-700 mb-1">Ghi chú:</p>
+                           <p className="text-slate-600 italic">{invoiceOrder.note}</p>
+                         </div>
+                       )}
+                     </>
+                   )}
                 </div>
-
-                {invoiceOrder.note && (
-                  <div className="py-3 border-b border-dashed border-slate-300 text-sm">
-                    <p className="font-semibold text-slate-700 mb-1">Ghi chú:</p>
-                    <p className="text-slate-600 italic">{invoiceOrder.note}</p>
-                  </div>
-                )}
                 
                 <div className="space-y-2 text-sm border-b border-dashed border-slate-300 py-4">
                     <div className="flex justify-between text-slate-600">
