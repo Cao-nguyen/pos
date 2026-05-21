@@ -117,7 +117,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#f3f4f6]">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#f3f4f6] overflow-hidden">
         {/* We can use an inner container to limit width if needed, or leave it fluid */}
         <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col overflow-y-auto overflow-x-hidden relative p-0">
             {children}
