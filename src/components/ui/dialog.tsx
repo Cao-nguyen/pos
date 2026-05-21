@@ -14,20 +14,30 @@ export function Dialog({ isOpen, onClose, children, title }: DialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-lg rounded-lg bg-white p-6 shadow-lg animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </button>
-        {title && (
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold leading-none tracking-tight">{title}</h2>
-          </div>
-        )}
-        <div>{children}</div>
+      {/* Backdrop overlay listener to close when clicking outside */}
+      <div className="fixed inset-0" onClick={onClose} />
+      
+      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] max-h-[85dvh] min-h-0 z-10 overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex-shrink-0 relative p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+          {title ? (
+            <h2 className="text-lg font-semibold leading-none tracking-tight text-slate-900">{title}</h2>
+          ) : (
+            <div />
+          )}
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 transition-colors opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </button>
+        </div>
+        
+        {/* Body - Scrollable */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-4">
+          {children}
+        </div>
       </div>
     </div>
   )

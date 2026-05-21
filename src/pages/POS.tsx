@@ -532,7 +532,7 @@ export default function POS() {
         title="Hoá đơn thanh toán"
       >
         {invoiceData && (
-          <div className="space-y-6 pt-4 max-h-[80vh] overflow-y-auto print:max-h-full print:block" id="invoice-print-area">
+          <div className="space-y-6 pt-4 print:block" id="invoice-print-area">
             <div className="text-center space-y-1 pb-4 border-b border-dashed border-slate-300">
                <h2 className="text-xl font-black text-slate-900 uppercase">HOÁ ĐƠN BÁN HÀNG</h2>
                <div className="text-sm text-slate-600 text-left mt-4 space-y-1">

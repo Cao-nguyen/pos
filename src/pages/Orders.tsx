@@ -460,7 +460,7 @@ export default function Orders() {
         title="Hoá đơn thanh toán"
       >
         {invoiceOrder && (
-          <div className="space-y-6 pt-4 max-h-[80vh] overflow-y-auto print:max-h-full print:block">
+          <div className="space-y-6 pt-4 print:block">
             <div id="invoice-print-area" className="bg-white p-4">
                 <div className="text-center space-y-1 pb-4 border-b border-dashed border-slate-300">
                    <h2 className="text-xl font-black text-slate-900 uppercase">HOÁ ĐƠN BÁN HÀNG</h2>
