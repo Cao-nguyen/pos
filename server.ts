@@ -9,7 +9,7 @@ import statsRoutes from './src/routes/statsRoutes.js';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   // Connect to MongoDB
   try {
@@ -46,14 +46,14 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
-    // Production static file serving
+  } else if (!process.env.VERCEL) {
+    // Production static file serving (only when not on Vercel)
     app.use(express.static('dist'));
     
     // SPA fallback for production
@@ -62,9 +62,17 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+const appPromise = startServer();
+export default async function (req: any, res: any) {
+  const app = await appPromise;
+  app(req, res);
+}
