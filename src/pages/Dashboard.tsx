@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, Tremor, ShoppingBag, Package, TrendingUp, Calendar as CalendarIcon, Clock, ArrowRight } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, TrendingUp, Calendar as CalendarIcon, Clock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
